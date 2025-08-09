@@ -4,7 +4,14 @@
 This is the  implementation of  paper: Towards Region-Aware Finer Self-Supervised Learning for Fine-Grained Visual Recognition
 
 ## the Framework of the Proposed RAFG
-
+<table border=0 >
+	<tbody>
+    <tr>
+		<tr>
+			<td width="40%" > <img src="https://github.com/huanglab-research/RAFG/blob/master/ff.png"> </td>
+		</tr>
+	</tbody>
+</table>
 
 
 ## Datasets
@@ -26,7 +33,7 @@ CUDA_VISIBLE_DEVICES=4,6 python -m torch.distributed.launch --nproc_per_node=2 -
 
 
 ### Pretrained Model
-You can download  pre-trained  models: [here]([https://github.com/google-research/vision_transformer](https://github.com/huanglab-research/RAFG/blob/master/swin_tiny_patch4_window7_224.pth)).   
+You can download  pre-trained  models: ([here](https://github.com/huanglab-research/RAFG/blob/master/swin_tiny_patch4_window7_224.pth)).   
 
 ------
 
