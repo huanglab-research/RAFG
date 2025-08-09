@@ -18,12 +18,11 @@ This is the  implementation of  paper: Towards Region-Aware Finer Self-Supervise
 Experiments on **3 image datasets**:
 FGVC-Aircraft，Stanford Cars, CUB-200-2011
 ### Datasets
-
-|#|Datasets|
-|---|----|
-|1|FGVC-Aircraft|
-|2|Stanford Cars|
-|3|CUB-200-2011|
+|#|Datasets|Download|
+|---|----|-----|
+|1|FGVC-Aircraft|[Link](http://www.robots.ox.ac.uk/~vgg/data/fgvc-aircraft/)|
+|2|Stanford Cars|[Link](https://ai.stanford.edu/~jkrause/cars/car_dataset.html)
+|3|CUB-200-2011|[Link](https://authors.library.caltech.edu/27452/)  |
 
 ### Training/Resume Training
 
