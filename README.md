@@ -4,14 +4,7 @@
 This is the  implementation of  paper: Towards Region-Aware Finer Self-Supervised Learning for Fine-Grained Visual Recognition
 
 ## the Framework of the Proposed RAFG
-<table border=0 >
-	<tbody>
-    <tr>
-		<tr>
-			<td width="40%" > <img src="https://stonepicture.oss-cn-hangzhou.aliyuncs.com/img/framework.svg"> </td>
-		</tr>
-	</tbody>
-</table>
+
 
 
 ## Datasets
@@ -25,24 +18,18 @@ FGVC-Aircraft，Stanford Cars, CUB-200-2011
 |2|Stanford Cars|
 |3|CUB-200-2011|
 
+### Training/Resume Training
+
+```python
+CUDA_VISIBLE_DEVICES=4,6 python -m torch.distributed.launch --nproc_per_node=2 --master_port 29504 main_esvit.py --arch swin --data_path $DATA_PATH/train --output_dir $OUT_PATH --batch_size_per_gpu 64 --epochs 300 --teacher_temp 0.07 --warmup_epochs 10 --warmup_teacher_temp_epochs 30 --norm_last_layer false --use_dense_prediction True --cfg experiments/imagenet/swin/swin_tiny_patch4_window7_224.yaml
+```
+
 
 ### Pretrained Model
-You can download  pre-trained  models: ViT-B/L-16/32 [here](https://github.com/google-research/vision_transformer).   
+You can download  pre-trained  models: [here]([https://github.com/google-research/vision_transformer](https://github.com/huanglab-research/RAFG/blob/master/swin_tiny_patch4_window7_224.pth)).   
 
 ------
 
-## Citation
-
-If you find the code in this repository useful for your research consider citing it.
-
-```
-@article{cao2023FSCH,
-title={Unsupervised Deep Hashing with Fine-grained Similarity-preserving Contrastive Learning for Image Retrieval},
-journal = {IEEE Transactions on Circuits and Systems for Video Technology}​，
-author={Hu Cao, Lei Huang, Jie Nie, Zhiqiang Wei},
-year={2023}
-}
-```
  
  
 
