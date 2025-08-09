@@ -46,6 +46,20 @@ CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node=1 --m
 ### Pretrained Model
 You can download  pre-trained  models: ([here](https://github.com/huanglab-research/RAFG/blob/master/swin_tiny_patch4_window7_224.pth)).   
 
+
+## Acknowledgements
+
+Our work is based on the following theoretical works:
+
+- Efficient self-supervised vision transformers for representation learning
+
+Furthermore, we are benefitting a lot from the following projects:
+
+- Fine-grained visual classificationvia internal ensemble learning transformer,IEEE Transactions on Multimedia, vol. 25, pp.9015-9028,2023, doi:10.1109/TMM.2023.3244340.
+- Learning common rationale to improve self-supervised representation for fine-grained visual recognition problems,IEEE CVPR,2023, pp.11392-11401. doi:10.1109/CVPR52729.2023.01096.
+ learning
+
+
 ------
 
  
