@@ -161,15 +161,9 @@ class WindowAttention(nn.Module):
 
         attn_out = attn
         attn = self.attn_drop(attn)
-        # print(f"attn:-------------~~~~~~~~{attn.size()}")
-        # print(f"v:-------------~~~~~~~~{v.size()}")
         x = (attn @ v).transpose(1, 2).reshape(B_, N, C)
-        # print(f"x:-------------~~~~~~~~{((attn @ v).transpose(1, 2)).size()}")
-        # print(f"x222:-------------~~~~~~~~{x.size()}")
         x = self.proj(x)
-        # print(f"x-proj:-------------~~~~~~~~{x.size()}")
         x = self.proj_drop(x)
-        # print(f"attn:{attn_out.shape}")
         return x, attn_out
 
     def extra_repr(self) -> str:
@@ -205,14 +199,7 @@ def generate_2d_mask(H=16, W=8, left=0, top=0, width=8, height=8, device='cuda')
     mask_ = torch.zeros([H, W], device=device,  dtype=torch.bool)
     mask_[left : left + width, top : top + height] = 1
 
-    # mask = mask.flatten(0)
-
-    # mask_ = torch.zeros([len(mask) + 4], device=device)
-    # mask_[4:] = mask
-    # mask_[part] = 1
-    # mask_[0] = 1 if cls_label else 0 ######### cls token
-    # mask_ = mask_.unsqueeze(1) # N x 1
-    # mask_ = mask_ @ mask_.t() # N x N
+  
     return mask_
 
 class SwinTransformerBlock(nn.Module):
@@ -493,9 +480,9 @@ class BasicLayer(nn.Module):
         attns = []
         for blk in self.blocks:
             x, attn = blk(x)
-            # print(f"attn:{attn.shape}")
+
             attns.append(attn)
-            # print(f"attn:{len(attns)}")
+
         if self.downsample is not None:
             x = self.downsample(x)
         return x,attns[-1]
@@ -585,23 +572,6 @@ class PatchEmbed(nn.Module):
             flops += Ho * Wo * self.embed_dim
         return flops
 
-
-# class PatchEmbed(nn.Module):
-#     """ Image to Patch Embedding
-#     """
-#     def __init__(self, img_size=224, patch_size=16, in_chans=3, embed_dim=768):
-#         super().__init__()
-#         num_patches = (img_size // patch_size) * (img_size // patch_size)
-#         self.img_size = img_size
-#         self.patch_size = patch_size
-#         self.num_patches = num_patches
-
-#         self.proj = nn.Conv2d(in_chans, embed_dim, kernel_size=patch_size, stride=patch_size)
-
-#     def forward(self, x):
-#         B, C, H, W = x.shape
-#         x = self.proj(x).flatten(2).transpose(1, 2)
-#         return x
 class CustomTransform:
     def __init__(self, crop_x, crop_y, crop_width, crop_height):
         self.crop_x = crop_x
@@ -612,8 +582,7 @@ class CustomTransform:
     def __call__(self, img):
         # 从固定位置裁剪
         img_cropped = transforms.functional.crop(img, self.crop_y, self.crop_x, self.crop_height, self.crop_width)
-        # 使用三次插值法调整大小到224x224
-        # img_resized = transforms.Resize((224, 224), interpolation=Image.BICUBIC)(img_cropped)
+
         return img_cropped
 
 class SwinTransformer(nn.Module):
@@ -789,7 +758,7 @@ class SwinTransformer(nn.Module):
             ),
             transforms.RandomGrayscale(p=0.2),
         ])
-        # RAFG proxy task()
+        # Region-Aware Self-supervised Proxy Task
         #
         # The source code is currently incomplete and will be fully released once the manuscript is accepted by the journal.
 

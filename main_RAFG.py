@@ -56,7 +56,7 @@ torchvision_archs = sorted(name for name in torchvision_models.__dict__
     and callable(torchvision_models.__dict__[name]))
 
 def get_args_parser():
-    parser = argparse.ArgumentParser('EsViT', add_help=False)
+    parser = argparse.ArgumentParser('RAFG', add_help=False)
 
     parser.add_argument('--cfg',
                         help='experiment configure file name',
@@ -194,7 +194,7 @@ def get_args_parser():
     parser.add_argument('--data_path', default='/home/ouc/fbj/CUB_200_2011/dataset/', type=str,
         help='Please specify path to the ImageNet training data.')
     
-    parser.add_argument('--pretrained_weights_ckpt', default='/home/hl/xy/esvit6/swin_tiny_patch4_window7_224.pth', type=str, help="Path to pretrained weights to evaluate.")
+    parser.add_argument('--pretrained_weights_ckpt', default='/home/hl/xy/swin_tiny_patch4_window7_224.pth', type=str, help="Path to pretrained weights to evaluate.")
     parser.add_argument('--output_dir', default=".", type=str, help='Path to save logs and checkpoints.')
     parser.add_argument('--saveckp_freq', default=5, type=int, help='Save checkpoint every x epochs.')
     parser.add_argument('--seed', default=42, type=int, help='Random seed.')
@@ -211,7 +211,7 @@ def get_args_parser():
     return parser
 
 
-def train_esvit(args):
+def train_RAFG(args):
     utils.init_distributed_mode(args)
     utils.fix_random_seeds(args.seed)
     print("git:\n  {}\n".format(utils.get_sha()))
@@ -237,9 +237,8 @@ def train_esvit(args):
     # setup mixup / cutmix
     mixup_fn = None
     mixup_active = args.mixup > 0 or args.cutmix > 0. or args.cutmix_minmax is not None
-    print(f"abccca")
     if mixup_active and args.use_mixup:
-        print(f"abccba")
+
         mixup_fn = Mixup(
             mixup_alpha=args.mixup, cutmix_alpha=args.cutmix, cutmix_minmax=args.cutmix_minmax,
             prob=args.mixup_prob, switch_prob=args.mixup_switch_prob, mode=args.mixup_mode,
@@ -248,15 +247,15 @@ def train_esvit(args):
     # ============ building student and teacher networks ... ============
 
     # if the network is a 4-stage vision transformer (i.e. swin)
-    print(f"1")
+
     if 'swin' in args.arch :
-        print(f"2")
+
         update_config(config, args)
         swin_spec = config.MODEL.SPEC
         student = build_model(config, use_dense_prediction=args.use_dense_prediction)
         teacher = build_model(config, is_teacher=True, use_dense_prediction=args.use_dense_prediction)
         depths=swin_spec['DEPTHS']
-        print(f"3")
+
         student.head = DINOHead(
             student.num_features,
             args.out_dim,
@@ -276,7 +275,7 @@ def train_esvit(args):
 
     # if the network is a 4-stage vision transformer (i.e. longformer)
     if 'vil' in args.arch :
-        print(f"7")
+
         update_config(config, args)
         student = build_model(config, use_dense_prediction=args.use_dense_prediction)
         teacher = build_model(config, is_teacher=True, use_dense_prediction=args.use_dense_prediction)
@@ -304,7 +303,7 @@ def train_esvit(args):
         student = build_model(config, use_dense_prediction=args.use_dense_prediction)
         teacher = build_model(config, is_teacher=True, use_dense_prediction=args.use_dense_prediction)
         fea_dim = config.MODEL.SPEC.DIM_EMBED[-1]
-        # print(fea_dim)
+
         student.head = DINOHead(
             fea_dim,
             args.out_dim,
@@ -381,7 +380,7 @@ def train_esvit(args):
 
 
     else:
-        print(f"3")
+
         print(f"Unknow architecture: {args.arch}")
 
     # move networks to gpu
@@ -403,12 +402,12 @@ def train_esvit(args):
     # there is no backpropagation through the teacher, so no need for gradients
     for p in teacher.parameters():
         p.requires_grad = False
-    print(f"Student and Teacher are built: they are both {args.arch} network.")
 
-    # ============ preparing loss ... ============
+
+
 
     if args.use_dense_prediction: 
-        # Both view and region level tasks are considered
+
         dino_loss = DDINOLoss(
             args.out_dim,
             sum(args.local_crops_number) + 2,  # total number of crops = 2 global crops + local_crops_number
@@ -448,7 +447,7 @@ def train_esvit(args):
         args.epochs, len(data_loader),
         warmup_epochs=args.warmup_epochs,
     )
-    print(f"llll11111111222222pppppp{utils.get_world_size()}")
+
     wd_schedule = utils.cosine_scheduler(
         args.weight_decay,
         args.weight_decay_end,
@@ -457,22 +456,14 @@ def train_esvit(args):
     # momentum parameter is increased to 1. during training with a cosine schedule
     momentum_schedule = utils.cosine_scheduler(args.momentum_teacher, 1,
                                                args.epochs, len(data_loader))
-    print(f"Loss, optimizer and schedulers ready.")
 
 
-    # ============ optionally resume training ... ============
+
+
     to_restore = {"epoch": 0}
 
     if args.pretrained_weights_ckpt:
-        # utils.restart_from_checkpoint(
-        #     os.path.join(args.pretrained_weights_ckpt),
-        #     run_variables=to_restore,
-        #     student=student,
-        #     teacher=teacher,
-        #     optimizer=optimizer,
-        #     fp16_scaler=fp16_scaler,
-        #     dino_loss=dino_loss,
-        # )
+
         checkpoint = torch.load(args.pretrained_weights_ckpt,map_location="cpu")
         state_dict = checkpoint['model']
         student.module.load_state_dict(state_dict,strict=False)
@@ -491,7 +482,7 @@ def train_esvit(args):
     start_epoch = to_restore["epoch"]
 
     start_time = time.time()
-    print(f"Starting training of EsViT ! from epoch {start_epoch}")
+    print(f"Starting training of RAFG ! from epoch {start_epoch}")
     
     best_top1 = 0
     best_top5 = 0
@@ -500,22 +491,12 @@ def train_esvit(args):
     for epoch in range(start_epoch, args.epochs):
         data_loader.sampler.set_epoch(epoch)
 
-        # ============ training one epoch of EsViT ... ============
+        # ============ training one epoch of RAFG ... ============
         train_stats = train_one_epoch(student, teacher, teacher_without_ddp, dino_loss,
             data_loader, optimizer, lr_schedule, wd_schedule, momentum_schedule,
             epoch, mixup_fn, fp16_scaler, args)
 
-        # test_starts = validate(val_loader,  teacher, args, epoch)
 
-        # best_top1 = max(test_starts["top1"], best_top1)
-
-        # best_top5 = max(test_starts["top5"], best_top5)
-
-        # best_mAP = max(test_starts["mAP"], best_mAP)
-
-        # print("best Top@1: %.4f" % (best_top1))
-        # print("best Top@5: %.4f" % (best_top5))
-        # print("best mAP: %.4f" % (best_mAP))
         # ============ writing logs ... ============
         save_dict = {
             'student': student.state_dict(),
@@ -532,8 +513,7 @@ def train_esvit(args):
             utils.save_on_master(save_dict, os.path.join(args.output_dir, f'checkpoint{epoch:04}.pth'))
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
                      'epoch': epoch}
-        # log_stats = {**{k: v for k, v in log_stats.items()},
-        #                  **{f'test_{k}': v for k, v in test_starts.items()}}
+
         if utils.is_main_process():
             with (Path(args.output_dir) / "log.txt").open("a") as f:
                 f.write(json.dumps(log_stats) + "\n")
@@ -573,9 +553,7 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
         # mixup for teacher model output
         teacher_input = images[:2]
         print(f'nonumber of images {len(images)}')
-        # image_shapes = [img.shape for img in images]
-        # for i, shape in enumerate(image_shapes):
-        #     print(f"Image {i} shape: {shape}")
+
         if mixup_fn is not None:
             student_input = []
             targets_mixup = []
@@ -604,8 +582,7 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
             # student_output = student(student_input)
             student_output = student(student_input)
             s_cls_out, s_region_out, s_fea, s_npatch = student_output
-            # print(f"在main 中测试chh{len(chh)}")
-            # teacher_output = teacher(teacher_input,chh)  # only the 2 global views pass through the teacher
+
             teacher_output = teacher(teacher_input)
             loss = dino_loss(student_output, teacher_output, epoch, targets_mixup)
 
@@ -662,147 +639,19 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
         metric_logger.update(wd=optimizer.param_groups[0]["weight_decay"])
 
 
-    #validate
-    # dataset_val = datasets.ImageFolder(os.path.join("/home/hl/xy/fgvc-aircraft-2013b/dataset/", "val"))
+
     
 
-    # top1, top5, mAP = validate(val_loader,  teacher, args, epoch)
-    # best_top1 = 0
-    # best_top5 = 0
-    # best_mAP = 0
 
-    # best_top1 = max(top1, best_top1)
-
-    # best_top5 = max(top5, best_top5)
-
-    # best_mAP = max(mAP, best_mAP)
-
-
-    # print("best Top@1: %.4f" % (best_top1))
-    # print("best Top@5: %.4f" % (best_top5))
-    # print("best mAP: %.4f" % (best_mAP))
-
-    # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
 
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
 
-# def validate(val_loader, model,  epoch):
-#     # batch_time = AverageMeter('Time', ':6.3f')
-#     # losses = AverageMeter('Loss', ':.4e')
-#     # top1 = AverageMeter('top1', ':6.2f')
-#     # top5 = AverageMeter('top5', ':6.2f')
-#     # mAP = AverageMeter('mAP', ':6.3f')
-#     # metric_logger = utils.MetricLogger(delimiter="  ")
-#     # progress = ProgressMeter(
-#     #     len(val_loader),
-#     #     [batch_time, losses, top1, top5,mAP],
-#     #     prefix='Test: ')
 
-#     # switch to evaluate mode
-#     model.eval()
-#     metric_logger = utils.MetricLogger(delimiter="  ")
-#     header = 'Test Epoch: [{}/{}]'.format(epoch, args.epochs)
-#     with torch.no_grad():
-#         # end = time.time()
-#         data = torch.zeros(1, 768)
-#         label = torch.zeros(1)
-#         # att_map = torch.zeros(1, 32, 7, 7)
-#         # for i, (images, target) in enumerate(val_loader):
-#         for images, target in metric_logger.log_every(val_loader, 10, header):
-#             if args.gpu is not None:
-#                 images = images.cuda(args.gpu, non_blocking=True)
-#                 target = target.cuda(args.gpu, non_blocking=True)
-
-#             # compute output
-#             # output, _, _, _ = model(images)
-#             output, _ = model.forward_feature_maps(images)
-#             # output= nn.functional.normalize(output, dim=1)
-#             # print(f"output111111111111111{output.size()}")
-
-#             data = torch.cat((data.cuda(args.gpu), output.cuda(args.gpu)), 0)
-
-#             label = torch.cat((label.cuda(args.gpu), target), 0)
-
-#             # att_map = torch.cat((att_map.cuda(args.gpu), featcov16.cuda(args.gpu)), 0)
-
-
-#         data = data[torch.arange(data.size(0)) != 0]
-#         label = label[torch.arange(label.size(0)) != 0]
-
-
-#         # att_map = att_map[torch.arange(att_map.size(0)) != 0]
-#         # max_pre = torch.var(att_map, dim=(2, 3), keepdim=False)
-#         # max_pre = torch.mean(max_pre, dim=0, keepdim=False)
-#         # a, idx1 = torch.sort(max_pre, descending=True)
-
-
-#         topN1 = []
-#         topN5 = []
-#         MAP = []
-#         for j in range(data.size(0)):
-#             query_feat = data[j, :]
-#             query_label = label[j].item()
-#             # print(f"query_label111111111111111{query_label.size()}")
-#             dict = data[torch.arange(data.size(0)) != j]
-#             sim_label = label[torch.arange(label.size(0)) != j]
-
-#             similarity = torch.mv(dict, query_feat)
-
-#             table = torch.zeros(similarity.size(0), 2)
-#             table[:, 0] = similarity
-#             table[:, 1] = sim_label
-#             table = table.cpu().detach().numpy()
-
-#             index = np.argsort(table[:, 0])[::-1]
-
-#             T = table[index]
-#             #top-1
-#             if T[0,1] == query_label:
-#                 topN1.append(1)
-#             else:
-#                 topN1.append(0)
-#             #top-5
-#             if np.sum(T[:5, -1] == query_label) > 0:
-#                 topN5.append(1)
-#             else:
-#                 topN5.append(0)
-
-#             #mAP
-#             check = np.where(T[:, 1] == query_label)
-#             check = check[0]
-#             AP = 0
-#             for k in range(len(check)):
-#                 temp = (k+1)/(check[k]+1)
-#                 AP = AP + temp
-#             if len(check) > 0:
-#                 AP = AP / len(check)
-#             else:
-#                 AP = 0
-#             MAP.append(AP)
-
-#         top1 = np.mean(topN1)
-#         top5 = np.mean(topN5)
-#         mAP = np.mean(MAP)
-#         # batch_size = images.shape[0]
-#         # metric_logger.meters['top1'].update(top1, n=images.shape[0])
-#         # metric_logger.meters['top5'].update(top5, n=images.shape[0])
-#         # metric_logger.meters['mAP'].update(mAP, n=images.shape[0])
-
-#         # logging.info(f'Top@1: {top1:.3f}, Top@5: {top5:.3f}, mAP: {mAP:.3f}')
-#         # progress.update(i)
-#         # metric_logger.update(loss=loss.item())
-#         # metric_logger.meters['acc1'].update(top1.item(), n=batch_size)
-#         # metric_logger.meters['acc5'].update(top5.item(), n=batch_size)
 #         # TODO: this should also be done with the ProgressMeter
-#         # metric_logger.synchronize_between_processes()
-#         print(' * Top@1 {top1:.3f} Top@5 {top5:.3f} mAP {mAP:.3f}'
-#               .format(top1=top1, top5=top5, mAP=mAP))
-
-#     # return {k: meter.global_avg for k, meter in metric_logger.meters.items()} 
-#     return top1, top5, mAP
+#
 
 def validate(val_loader, model, epoch):
     batch_time = AverageMeter('Time', ':6.3f')
@@ -831,25 +680,20 @@ def validate(val_loader, model, epoch):
 
             # compute output
             output, _ = model.forward_feature_maps(images)
-            # output, _, _, _ = model(images)
-            # output= nn.functional.normalize(output, dim=1)
-            # print(f"output111111111111111{output.size()}")
+
 
             data = torch.cat((data.cuda(args.gpu), output.cuda(args.gpu)), 0)
 
             label = torch.cat((label.cuda(args.gpu), target), 0)
 
-            # att_map = torch.cat((att_map.cuda(args.gpu), featcov16.cuda(args.gpu)), 0)
+
 
 
         data = data[torch.arange(data.size(0)) != 0]
         label = label[torch.arange(label.size(0)) != 0]
 
 
-        # att_map = att_map[torch.arange(att_map.size(0)) != 0]
-        # max_pre = torch.var(att_map, dim=(2, 3), keepdim=False)
-        # max_pre = torch.mean(max_pre, dim=0, keepdim=False)
-        # a, idx1 = torch.sort(max_pre, descending=True)
+
 
 
         topN1 = []
@@ -858,7 +702,7 @@ def validate(val_loader, model, epoch):
         for j in range(data.size(0)):
             query_feat = data[j, :]
             query_label = label[j].item()
-            # print(f"query_label111111111111111{query_label.size()}")
+
             dict = data[torch.arange(data.size(0)) != j]
             sim_label = label[torch.arange(label.size(0)) != j]
 
@@ -901,11 +745,7 @@ def validate(val_loader, model, epoch):
         metric_logger.meters['top5'].update(top5, n=images.shape[0])
         metric_logger.meters['mAP'].update(mAP, n=images.shape[0])
 
-        # logging.info(f'Top@1: {top1:.3f}, Top@5: {top5:.3f}, mAP: {mAP:.3f}')
-        # progress.update(i)
-        # metric_logger.update(loss=loss.item())
-        # metric_logger.meters['acc1'].update(top1.item(), n=batch_size)
-        # metric_logger.meters['acc5'].update(top5.item(), n=batch_size)
+
         # TODO: this should also be done with the ProgressMeter
         metric_logger.synchronize_between_processes()
         print(' * Top@1 {top1:.3f} Top@5 {top5:.3f} mAP {mAP:.3f}'
@@ -962,8 +802,7 @@ class DINOLoss(nn.Module):
         self.center_momentum = center_momentum
         self.ncrops = ncrops
         self.register_buffer("center", torch.zeros(1, out_dim))
-        # we apply a warm up for the teacher temperature because
-        # a too high temperature makes the training instable at the beginning
+
         self.teacher_temp_schedule = np.concatenate((
             np.linspace(warmup_teacher_temp,
                         teacher_temp, warmup_teacher_temp_epochs),
@@ -990,7 +829,7 @@ class DINOLoss(nn.Module):
                     # we skip cases where student and teacher operate on the same view
                     continue
                 if targets_mixup:
-                    # print(targets_mixup[v])
+
                     loss = -torch.sum( targets_mixup[v] * torch.mm(q, F.log_softmax(student_out[v], dim=-1).t()), dim=-1)
                 else:
                     loss = torch.sum(-q * F.log_softmax(student_out[v], dim=-1), dim=-1)
@@ -1049,16 +888,14 @@ class DDINOLoss(nn.Module):
         t_cls = F.softmax((t_cls_out - self.center) / temp, dim=-1)
         t_cls = t_cls.detach().chunk(2)
 
-        # t_cls_part = F.softmax((t_cls_out_part-self.center_part) / temp, dim = -1)
-        # t_cls_part = t_cls_part.detach().chunk(8)
+
 
         t_region = F.softmax((t_region_out - self.center_grid) / temp, dim=-1)
         t_region = t_region.detach().chunk(2)
         t_fea = t_fea.chunk(2)
-        #
-        # Local-Global Mutual-Learning module()
-        # The source code is currently incomplete and will be fully released once the manuscript is accepted by thejournal.
 
+        # Local-Global Mutual-Learning Module
+        # The source code is currently incomplete and will be fully released once the manuscript is accepted by the journal.
 
     @torch.no_grad()
     def update_center(self, teacher_output, teacher_grid_output, t_region_pooled_avg):
@@ -1072,10 +909,7 @@ class DDINOLoss(nn.Module):
         dist.all_reduce(batch_center)
         batch_center = batch_center / (len(teacher_output) * dist.get_world_size())
 
-        # part view center update
-        # batch_part_center = torch.sum(t_part, dim=0, keepdim=True)
-        # dist.all_reduce(batch_center)
-        # batch_part_center = batch_part_center / (len(t_part) * dist.get_world_size())
+
 
         batch_part_center = torch.sum(t_region_pooled_avg, dim=0, keepdim=True)
         dist.all_reduce(batch_center)
@@ -1094,7 +928,7 @@ class DDINOLoss(nn.Module):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser('EsViT', parents=[get_args_parser()])
+    parser = argparse.ArgumentParser('RAFG', parents=[get_args_parser()])
     args = parser.parse_args()
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
-    train_esvit(args)
+    train_RAFG(args)
