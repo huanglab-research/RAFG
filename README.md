@@ -2,7 +2,7 @@
 
 This repository is an official implementation of the paper "Towards Region-Aware Finer Self-Supervised Learning for Fine-Grained Visual Recognition".
 
-By Yao Xu, Lei Huang Jie Nie, Yadong Huo and Zhiqiang We.
+By Yao Xu, Lei Huang, Jie Nie, Yadong Huo and Zhiqiang Wei.
 
 > **Abstract:** 
 Self-supervised visual representation learning has achieved remarkable success across a variety of conventional computer vision tasks. However, their reliance on generic global feature extraction mechanisms fundamentally limits their ability to capture subtle inter-class variations, which are crucial for fine-grained visual recognition. Specifically, the model lacks the ability to perceive semantically meaningful local regions within images, making it difficult to effectively identify and
@@ -58,3 +58,13 @@ We are very grateful for these excellent works: [LCR](https://github.com/GANPerf
 Feel free to contact me if there is any question. (Yao Xu: [xuyao8809@stu.ouc.edu.cn](mailto:xuyao8809@stu.ouc.edu.cn), Lei Huang: [huangl@ouc.edu.cn](mailto:huangl@ouc.edu.cn))
 
 ---
+## Cite
+
+```
+@ARTICLE{huang2026uncertainty,
+  author={Yao Xu, Lei Huang, Jie Nie, Yadong Huo and Zhiqiang Wei},
+  journal={IEEE Transactions on Geoscience and Remote Sensing}, 
+  title={Towards Region-Aware Finer Self-Supervised Learning for Fine-Grained Visual Recognition}, 
+  year={2026}
+}
+```
