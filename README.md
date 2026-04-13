@@ -9,7 +9,7 @@ Self-supervised visual representation learning has achieved remarkable success a
 utilize these regions to focus on category-specific details. Although recent studies have attempted to incorporate region-level information through random cropping strategies, such methods often capture only the shared features among similar categories, thereby weakening the discriminative power of the learned representations in fine-grained recognition tasks. To address this limitation, we propose a novel region-aware self-supervised learning framework that suppresses redundant shared representations while enhancing the learning of fine-grained class-specific cues without relying on manual annotations. The framework consists of two synergistic components. At the inter-branch level, we introduce a region-aware self-supervised proxy task designed to enhance key local fine-grained features. It encourages cross-branch learning between semantically salient local regions and the global view, guiding the model to focus on more informative parts of the image. At the intra-branch
 level, we introduce a Local-Global Mutual Learning module that integrates local details with holistic semantic context, thereby promoting greater representational diversity and improving the model’s discriminative performance on fine-grained categories. Extensive experiments on three benchmark datasets CUB-200-2011, Stanford Cars and FGVC-Aircraft show that our region-aware self-supervised framework achieves superior performance compared to existing state-of-the-art methods.
 
-<img width="800" src="arch.png">
+
 
 ## Contents
 
