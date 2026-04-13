@@ -894,8 +894,127 @@ class DDINOLoss(nn.Module):
         t_region = t_region.detach().chunk(2)
         t_fea = t_fea.chunk(2)
 
-        # Local-Global Mutual-Learning Module
-        # The source code is currently incomplete and will be fully released once the manuscript is accepted by the journal.
+         N = t_npatch[0] # num of patches in the first view
+        B = t_region[0].shape[0]//N # batch size, 
+
+        # student sharpening
+        s_cls = s_cls_out / self.student_temp
+        s_cls = s_cls.chunk(self.ncrops)
+
+        s_region = s_region_out / self.student_temp
+        s_split_size = [s_npatch[0]] * 2 + [s_npatch[1]] * (self.ncrops -2) 
+        s_split_size_bs = [i * B for i in s_split_size]
+        
+        s_region = torch.split(s_region, s_split_size_bs, dim=0)
+        s_fea = torch.split(s_fea, s_split_size_bs, dim=0)
+
+
+
+        total_loss = 0
+        n_loss_terms = 0
+
+        loss1 = torch.sum(F.softmax(s_cls[2], dim=-1) * F.log_softmax(s_cls[1], dim=-1), dim=-1)
+
+        loss2 = torch.sum(F.softmax(s_cls[1], dim=-1) * F.log_softmax(s_cls[0], dim=-1), dim=-1)
+        loss3 = torch.sum(F.softmax(s_cls[0], dim=-1) * F.log_softmax(s_cls[1], dim=-1), dim=-1)
+        loss4 = torch.sum(F.softmax(s_cls[0], dim=-1) * F.log_softmax(s_cls[3], dim=-1), dim=-1)
+        loss5 = torch.sum(F.softmax(s_cls[1], dim=-1) * F.log_softmax(s_cls[3], dim=-1), dim=-1)
+        loss6 = torch.sum(F.softmax(s_cls[3], dim=-1) * F.log_softmax(s_cls[0], dim=-1), dim=-1)
+
+
+        lossall = loss1+loss2+loss3+loss4+loss5+loss6
+        tt_cls1 = t_cls[0]
+
+        tt_cls2 = t_cls[0]
+
+        for iq, q in enumerate(t_cls):
+            for v in range(len(s_cls)):
+
+                if v == iq:
+                    # we skip cases where student and teacher operate on the same view
+                    continue
+                
+                # view level prediction loss
+                loss = 0.5 * torch.sum(-q * F.log_softmax(s_cls[v], dim=-1), dim=-1)
+
+                # region level prediction loss
+                s_region_cur, s_fea_cur = s_region[v].view(B, s_split_size[v], -1), s_fea[v].view(B, s_split_size[v], -1)  # B x T_s x K, B x T_s x P
+                t_region_cur, t_fea_cur = t_region[iq].view(B, N, -1), t_fea[iq].view(B, N, -1)  # B x T_t x K, B x T_t x P, 
+
+                # similarity matrix between two sets of region features
+                region_sim_matrix = torch.matmul(F.normalize(s_fea_cur, p=2, dim=-1) , F.normalize(t_fea_cur, p=2, dim=-1) .permute(0, 2, 1)) # B x T_s x T_t
+                region_sim_ind = region_sim_matrix.max(dim=2)[1] # B x T_s; collect the argmax index in teacher for a given student feature
+                
+                t_indexed_region = torch.gather( t_region_cur, 1, region_sim_ind.unsqueeze(2).expand(-1, -1, t_region_cur.size(2)) ) # B x T_s x K (index matrix: B, T_s, 1)
+
+                loss_grid = torch.sum(- t_indexed_region * F.log_softmax(s_region_cur, dim=-1), dim=[-1]).mean(-1)   # B x T_s x K --> B 
+
+                loss += 0.5 * loss_grid
+
+                if((v==2 and iq==1) or (v==3 and iq==0)):
+                    t_region_pooled = torch.gather(
+                    t_fea_cur, 1, region_sim_ind.unsqueeze(2).expand(-1, -1, t_fea_cur.size(2))
+                    )
+                    
+                    t_region_pooled_avg = self.avgpool(t_region_pooled.transpose(1, 2))  # B C 1
+                    
+                    t_region_pooled_avg = torch.flatten(t_region_pooled_avg, 1)
+                    
+                    t_region_pooled_avg = self.head(t_region_pooled_avg)
+                    
+
+                    t_region_pooled_avgg = F.softmax((t_region_pooled_avg - self.center_part) / temp, dim=-1)
+                    
+                    s_cls_cur = s_cls[v]
+                    s_cls_log_probs = F.log_softmax(s_cls_cur, dim=-1)
+                    
+                    loss_cls = torch.sum(-t_region_pooled_avgg * s_cls_log_probs, dim=-1).mean(-1)
+                    # loss += 0.5 * loss_cls
+                    
+                    los_cls = torch.sum(-t_region_pooled_avgg * s_cls_log_probs, dim=-1).mean(-1)
+
+                if((v==2 and iq==0) or (v==3 and iq==1)):
+                    t_region_pooled1 = torch.gather(
+                    t_fea_cur, 1, region_sim_ind.unsqueeze(2).expand(-1, -1, t_fea_cur.size(2))
+                    )
+                    t_region_pooled_avg1 = self.avgpool(t_region_pooled1.transpose(1, 2))  # B C 1
+                    
+                    t_region_pooled_avg1 = torch.flatten(t_region_pooled_avg1, 1)
+                    
+                    t_region_pooled_avg1 = self.head(t_region_pooled_avg1)
+                    
+
+                    t_region_pooled_avgg1 = F.softmax((t_region_pooled_avg1 - self.center_part) / temp, dim=-1)
+                    if(v==2):
+                        tt_cls1=t_region_pooled_avgg1
+                    if(v==3):
+                        tt_cls2=t_region_pooled_avgg1
+
+
+               
+                total_loss += loss.mean()
+                n_loss_terms += 1
+
+        loss11 = torch.sum(F.softmax(tt_cls1, dim=-1) * F.log_softmax(t_cls[1], dim=-1), dim=-1)
+        loss22 = torch.sum(F.softmax(tt_cls2, dim=-1) * F.log_softmax(t_cls[0], dim=-1), dim=-1)
+        loss33 = torch.sum(F.softmax(t_cls[1], dim=-1) * F.log_softmax(t_cls[0], dim=-1), dim=-1)
+        loss44 = torch.sum(F.softmax(t_cls[0], dim=-1) * F.log_softmax(t_cls[1], dim=-1), dim=-1)
+        
+
+        loss55 = torch.sum(F.softmax(t_cls[1], dim=-1) * F.log_softmax(tt_cls1, dim=-1), dim=-1)
+        loss66 = torch.sum(F.softmax(t_cls[0], dim=-1) * F.log_softmax(tt_cls2, dim=-1), dim=-1)
+
+        losss = loss11+loss22+lossall+loss33+loss44+loss55+loss66
+
+        total_loss += 0.1*losss.mean()
+
+        
+        total_loss /= n_loss_terms
+
+        # self.update_center(t_cls_out, t_region_out, t_cls_out_part)
+        self.update_center(t_cls_out, t_region_out,t_region_pooled_avg)
+        # self.update_center(t_cls_out, t_region_out)
+        return total_loss
 
     @torch.no_grad()
     def update_center(self, teacher_output, teacher_grid_output, t_region_pooled_avg):
