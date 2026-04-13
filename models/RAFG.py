@@ -801,7 +801,7 @@ class SwinTransformer(nn.Module):
                             
                             input_dim = attns[3-i].size(1)
                             output_dim = attns[3-i-1].size(1)
-                            print(f"i):{3-i-1}")
+                           
                             m = nn.Conv1d(input_dim,output_dim,1)
                             m = m.half().to('cuda')  
                             a1 = attns[3-i].unsqueeze(-1)
@@ -824,7 +824,7 @@ class SwinTransformer(nn.Module):
                             
                             h[i] = a1_out * attns[3-i-1]
                             
-                        print(f"hi):{h[i].shape}")
+                       
                     if h[-1].size(1) == 3136:
                         
                         B = h[2].size(0)
