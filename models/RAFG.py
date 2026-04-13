@@ -1,10 +1,3 @@
-# --------------------------------------------------------
-# Modified by Chunyuan Li (chunyl@microsoft.com)
-# Swin Transformer
-# Copyright (c) 2021 Microsoft
-# Written by Ze Liu
-# --------------------------------------------------------
-
 import os
 import logging
 import torch
