@@ -759,9 +759,189 @@ class SwinTransformer(nn.Module):
             transforms.RandomGrayscale(p=0.2),
         ])
         # Region-Aware Self-supervised Proxy Task
-        #
-        # The source code is currently incomplete and will be fully released once the manuscript is accepted by the journal.
+               if not isinstance(x, list):
+            x = [x]
 
+        if len(x) == 12:
+
+
+            x2 = x[-2]
+            x1 = x[-1]
+            x = x[:-2]
+
+
+        idx_crops = torch.cumsum(torch.unique_consecutive(  #idx_crops里记录了不同裁剪大小的结束位置
+            torch.tensor([inp.shape[-1] for inp in x]),
+            return_counts=True,
+        )[1], 0)
+
+        if self.use_dense_prediction:
+            start_idx = 0
+
+          
+
+            masks_ = torch.zeros([32, 8, 7, 7], device='cuda')
+            dic2 = {}
+            for end_idx in idx_crops:
+
+                attns = []
+                h = [None] * 3
+                testt = torch.cat(x[start_idx: end_idx])
+
+                _out_cls, _out_fea, attns = self.forward_features(testt)  #相同大小的裁剪进行合并
+                
+
+                B, N, C = _out_fea.shape
+              
+                clss = torch.zeros([32, 8, 768], device='cuda')
+
+
+                dic1 = {}
+                
+                dic3 = {}
+                if(start_idx==0 and len(x)==10):
+                    
+
+                    for i in range(0,len(attns)-1,):
+
+                        if i==0:
+                            
+                            input_dim = attns[3-i].size(1)
+                            output_dim = attns[3-i-1].size(1)
+                            print(f"i):{3-i-1}")
+                            m = nn.Conv1d(input_dim,output_dim,1)
+                            m = m.half().to('cuda')  
+                            a1 = attns[3-i].unsqueeze(-1)
+                            
+                            a1_out = m(a1).squeeze(-1)
+                            
+                            h[i] = a1_out * attns[3-i-1]
+                        else:
+                            
+                            input_dim = h[i-1].size(1)
+                            output_dim = attns[3-i-1].size(1)
+                            
+                            m = nn.Conv1d(input_dim,output_dim,1)
+                            
+                            m = m.half().to('cuda')  
+                            a1 = h[i-1].unsqueeze(-1)
+                        
+                            # a1 = a1.float()
+                            a1_out = m(a1).squeeze(-1)
+                            
+                            h[i] = a1_out * attns[3-i-1]
+                            
+                        print(f"hi):{h[i].shape}")
+                    if h[-1].size(1) == 3136:
+                        
+                        B = h[2].size(0)
+                     
+                        kernel = torch.ones(1, 1, 24, 24, device='cuda')
+                        h[2] = h[2].view(B,56,56)
+                        h2_expanded = h[2].unsqueeze(1)
+                        region_sum = torch.nn.functional.conv2d(
+                            h2_expanded, kernel, stride=1, padding=0
+                        ) 
+                        region_sum = region_sum.squeeze(1) 
+
+                        for batchh in range(B):
+                            s = []
+                            for column1 in range(0, 33, 3):
+                                for row1 in range(0, 33, 3):
+                                    summed_value = region_sum[batchh, column1, row1]
+                                    s.append([column1, row1, summed_value])
+
+                            sorted_s = sorted(s, key=lambda x: x[2], reverse=True)
+                            p = [sorted_s[0]]
+
+
+                            boxesA = torch.tensor([[x[0], x[1], x[0] + 23, x[1] + 23] for x in p], device='cuda', dtype=torch.float32)
+
+
+                            dic2[batchh] = p
+                            dic1[batchh] = s
+                        for o in range(0,64):
+                            tt = []
+
+                            for r in range(0, 1):
+
+                                transformss = transforms.Compose([
+                                    transforms.ToPILImage(),
+                                    CustomTransform(crop_x=dic2[o][r][0] * 4, crop_y=dic2[o][r][1] * 4, crop_width=96, crop_height=96),
+                                    flip_and_color_jitter,
+                                    utils.GaussianBlur(p=0.5),
+                                    transforms.ToTensor(),
+                                    transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+                                ])
+                                tt.append(transformss(x1[o]))
+
+                            
+                            dic3[o] = tt
+                        for o in range(0,64):
+                            tt = []
+                      
+                            for r in range(0, 1):
+                            
+                                transformss = transforms.Compose([
+                                    transforms.ToPILImage(),
+                                    CustomTransform(crop_x=dic2[o+64][r][0] * 4, crop_y=dic2[o+64][r][1] * 4, crop_width=96, crop_height=96),
+                                    flip_and_color_jitter,
+                                    utils.GaussianBlur(p=0.5),
+                                    transforms.ToTensor(),
+                                    transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+                                ])
+                                tt.append(transformss(x2[o]))
+
+                            
+                            dic3[o+64] = tt
+                       
+                        for hh in range(0, 64):
+                            for ll in range(2, 3):
+
+                                x[ll][hh] = dic3[hh][ll - 2]
+                                
+                        for hh in range(0,64):
+                            for ll in range(3,4):
+
+                                x[ll][hh] = dic3[hh+64][ll-3]
+                                
+
+                    
+                
+                if start_idx == 0:   #如果是第一组那直接赋值
+                   
+                    output_cls = _out_cls
+                    output_fea = _out_fea.reshape(B * N, C)
+                    
+               
+                    npatch = [N]
+                else:  #如果不是第一组则与之前的组进行拼接
+                    output_cls = torch.cat((output_cls, _out_cls))
+                   
+                    output_fea = torch.cat((output_fea, _out_fea.reshape(B * N, C) ))
+                    
+                   
+                    npatch.append(N) #为了知道每个原始数据段被划分成了多少个子部分
+                start_idx = end_idx
+               
+            if len(x) == 10:
+               
+                return self.head(output_cls), self.head_dense(output_fea), output_fea, npatch
+            else:
+               
+                return self.head(output_cls), self.head_dense(output_fea), output_fea, npatch
+           
+        else:
+            start_idx = 0
+            for end_idx in idx_crops:
+                _out = self.forward_features(torch.cat(x[start_idx: end_idx]))
+                if start_idx == 0:
+                    output = _out
+                else:
+                    output = torch.cat((output, _out))
+                start_idx = end_idx
+            # Run the head forward on the concatenated features.
+            return self.head(output)
     def forward_selfattention(self, x, n=1):
         # n=1 return the last layer attn map; otherwise return attn maps in all layers
 
