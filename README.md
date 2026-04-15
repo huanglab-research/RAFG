@@ -53,11 +53,6 @@ CUDA_VISIBLE_DEVICES=1 python -m torch.distributed.launch --nproc_per_node=1 --m
 
 We are very grateful for these excellent works: [LCR](https://github.com/GANPerf/LCR),[EsViT](https://github.com/microsoft/esvit),[DINO]( https://github.com/facebookresearch/dino). Please follow their respective licenses for usage and redistribution. Thanks for their awesome works.
 
-## 📬 Contact
-
-Feel free to contact me if there is any question. (Yao Xu: [xuyao8809@stu.ouc.edu.cn](mailto:xuyao8809@stu.ouc.edu.cn), Lei Huang: [huangl@ouc.edu.cn](mailto:huangl@ouc.edu.cn))
-
----
 ## Cite
 
 ```
