@@ -56,7 +56,7 @@ We are very grateful for these excellent works: [LCR](https://github.com/GANPerf
 ## Cite
 
 ```
-@ARTICLE{xu2026uncertainty,
+@ARTICLE{xu2026,
   author={Yao Xu, Lei Huang, Jie Nie, Yadong Huo and Zhiqiang Wei},
   journal={IEEE Transactions on Multimedia}, 
   title={Towards Region-Aware Finer Self-Supervised Learning for Fine-Grained Visual Recognition}, 
